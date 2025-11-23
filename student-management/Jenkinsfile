@@ -1,5 +1,10 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'maven:3.9.9-eclipse-temurin-17'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
 
     environment {
         IMAGE_NAME = "klibimayssa/my-spring-app"
@@ -9,7 +14,7 @@ pipeline {
     stages {
         stage('Build Maven') {
             steps {
-                dir('student-management') {  // ← AJOUTEZ CE BLOC
+                dir('student-management') {
                     sh 'mvn clean package -DskipTests'
                 }
             }
@@ -17,7 +22,7 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                dir('student-management') {  // ← AJOUTEZ CE BLOC
+                dir('student-management') {
                     script {
                         sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
                     }
