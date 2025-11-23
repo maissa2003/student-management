@@ -7,17 +7,20 @@ pipeline {
     }
 
     stages {
-
         stage('Build Maven') {
             steps {
-                sh 'mvn clean package -DskipTests'
+                dir('student-management') {  // ← AJOUTEZ CE BLOC
+                    sh 'mvn clean package -DskipTests'
+                }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                dir('student-management') {  // ← AJOUTEZ CE BLOC
+                    script {
+                        sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                    }
                 }
             }
         }
@@ -32,6 +35,5 @@ pipeline {
                 }
             }
         }
-
     }
 }
