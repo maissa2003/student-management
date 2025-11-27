@@ -1,42 +1,34 @@
 pipeline {
-    agent {
-        docker {
-            image 'maven:3.9.9-eclipse-temurin-17'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
-        }
-    }
-
-    environment {
-        IMAGE_NAME = "klibimayssa/my-spring-app"
-        IMAGE_TAG = "1.0"
-    }
+    agent any
 
     stages {
-        stage('Build Maven') {
+        stage('Build with Maven') {
+            agent {
+                docker {
+                    image 'maven:3.9.9-eclipse-temurin-17'
+                    reuseNode true      // very important on Windows/Mac
+                }
+            }
             steps {
+                checkout scm                     // <-- Jenkins does the git checkout on the host
                 dir('student-management') {
-                    sh 'mvn clean package -DskipTests'
+                    sh 'mvn -B clean package -DskipTests'
                 }
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Docker Build & Push') {
+            agent any
             steps {
                 dir('student-management') {
                     script {
-                        sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
-                    }
-                }
-            }
-        }
+                        def image = docker.build("klibimayssa/my-spring-app:1.0.${env.BUILD_NUMBER}")
 
-        stage('Push Docker Image to DockerHub') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-cred', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
-                    sh """
-                        echo "$PASS" | docker login -u "$USER" --password-stdin
-                        docker push ${IMAGE_NAME}:${IMAGE_TAG}
-                    """
+                        docker.withRegistry('', 'dockerhub-cred') {
+                            image.push()
+                            image.push('latest')
+                        }
+                    }
                 }
             }
         }
