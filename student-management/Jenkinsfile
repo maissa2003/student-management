@@ -1,34 +1,42 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'maven:3.9.9-eclipse-temurin-17'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
+
+    environment {
+        IMAGE_NAME = "klibimayssa/my-spring-app"
+        IMAGE_TAG = "1.0"
+    }
 
     stages {
-        stage('Build with Maven') {
-            agent {
-                docker {
-                    image 'maven:3.9.9-eclipse-temurin-17'
-                    reuseNode true      // very important on Windows/Mac
-                }
-            }
+        stage('Build Maven') {
             steps {
-                checkout scm                     // <-- Jenkins does the git checkout on the host
                 dir('student-management') {
-                    sh 'mvn -B clean package -DskipTests'
+                    sh 'mvn clean package -DskipTests'
                 }
             }
         }
 
-        stage('Docker Build & Push') {
-            agent any
+        stage('Build Docker Image') {
             steps {
                 dir('student-management') {
                     script {
-                        def image = docker.build("klibimayssa/my-spring-app:1.0.${env.BUILD_NUMBER}")
-
-                        docker.withRegistry('', 'dockerhub-cred') {
-                            image.push()
-                            image.push('latest')
-                        }
+                        sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
                     }
+                }
+            }
+        }
+
+        stage('Push Docker Image to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-cred', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                    sh """
+                        echo "$PASS" | docker login -u "$USER" --password-stdin
+                        docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                    """
                 }
             }
         }
