@@ -1,0 +1,8 @@
+.git
+.gitignore
+README.md
+*.log
+target/classes/
+target/test-classes/
+.mvn/
+.DS_Store
