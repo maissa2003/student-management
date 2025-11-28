@@ -7,37 +7,33 @@ pipeline {
     }
 
     stages {
-        stage('Build Maven') {
+        stage('Build with Maven') {
+            agent {
+                docker {
+                    image 'maven:3.9.9-eclipse-temurin-17'
+                    reuseNode true
+                }
+            }
             steps {
                 dir('student-management') {
-                    sh 'mvn clean package -DskipTests'
+                    sh 'mvn -B clean package -DskipTests'
                 }
             }
         }
 
-        stage('Clean Docker Cache') {
-            steps {
-                sh 'docker system prune -f || true'
-            }
-        }
-
-        stage('Build Docker Image') {
+        stage('Docker Build & Push') {
+            agent any
             steps {
                 dir('student-management') {
                     script {
-                        sh "docker build --no-cache -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                        sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
                     }
-                }
-            }
-        }
-
-        stage('Push Docker Image to DockerHub') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-cred', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
-                    sh """
-                        echo "$PASS" | docker login -u "$USER" --password-stdin
-                        docker push ${IMAGE_NAME}:${IMAGE_TAG}
-                    """
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-cred', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                        sh """
+                            echo "$PASS" | docker login -u "$USER" --password-stdin
+                            docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                        """
+                    }
                 }
             }
         }
